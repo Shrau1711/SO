@@ -1,0 +1,69 @@
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h>
+
+using namespace std;
+
+#define N 5  // number of philosophers
+
+pthread_mutex_t forks[N];  // mutex for each fork
+
+void* philosopher(void* num) {
+    int id = *(int*)num;
+
+    while (true) {
+        // Thinking
+        cout << "Philosopher " << id << " is thinking." << endl;
+        sleep(1);
+
+        // To avoid deadlock: pick lower-numbered fork first
+        int first = id;
+        int second = (id + 1) % N;
+        if (id == N - 1) {
+            // last philosopher picks in reverse
+            first = (id + 1) % N;
+            second = id;
+        }
+
+        // Pick up forks
+        pthread_mutex_lock(&forks[first]);
+        pthread_mutex_lock(&forks[second]);
+
+        // Eating
+        cout << "Philosopher " << id << " is eating." << endl;
+        sleep(2);
+
+        // Put down forks
+        pthread_mutex_unlock(&forks[first]);
+        pthread_mutex_unlock(&forks[second]);
+    }
+    pthread_exit(NULL);
+}
+
+int main() {
+    pthread_t tid[N];
+    int philosopherNumbers[N];
+
+    // Initialize mutexes
+    for (int i = 0; i < N; i++) {
+        pthread_mutex_init(&forks[i], NULL);
+        philosopherNumbers[i] = i;
+    }
+
+    // Create philosopher threads
+    for (int i = 0; i < N; i++) {
+        pthread_create(&tid[i], NULL, philosopher, &philosopherNumbers[i]);
+    }
+
+    // Wait for threads to finish
+    for (int i = 0; i < N; i++) {
+        pthread_join(tid[i], NULL);
+    }
+
+    // Destroy mutexes
+    for (int i = 0; i < N; i++) {
+        pthread_mutex_destroy(&forks[i]);
+    }
+
+    return 0;
+}
